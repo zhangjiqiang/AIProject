@@ -6,21 +6,13 @@
 ## 项目指南
 
 ### 步骤
+1. 下载[狗狗数据集](https://s3.cn-north-1.amazonaws.com.cn/static-documents/nd101/v4-dataset/dogImages.zip) ，并将数据集解压大存储库中，地点为`项目路径/dogImages`. 
 
-1. 克隆存储库并打开下载的文件夹。
+2. 下载[人类数据集](https://s3.cn-north-1.amazonaws.com.cn/static-documents/nd101/v4-dataset/lfw.zip)。并将数据集解压大存储库中，位置为`项目路径/lfw `。
 
- ```	
-git clone https://github.com/udacity/MLND_CN_P4_Dog_Project.git
-cd MLND_CN_P4_Dog_Project/
-```
+3. 为狗狗数据集下载 [VGG-16关键特征](https://s3.cn-north-1.amazonaws.com.cn/static-documents/nd101/v4-dataset/DogVGG16Data.npz) 并将其放置于存储库中，位置为`项目路径/bottleneck_features `。
 
-2. 下载[狗狗数据集](https://s3.cn-north-1.amazonaws.com.cn/static-documents/nd101/v4-dataset/dogImages.zip) ，并将数据集解压大存储库中，地点为`项目路径/dogImages`. 
-
-3. 下载[人类数据集](https://s3.cn-north-1.amazonaws.com.cn/static-documents/nd101/v4-dataset/lfw.zip)。并将数据集解压大存储库中，位置为`项目路径/lfw `。
-
-4. 为狗狗数据集下载 [VGG-16关键特征](https://s3.cn-north-1.amazonaws.com.cn/static-documents/nd101/v4-dataset/DogVGG16Data.npz) 并将其放置于存储库中，位置为`项目路径/bottleneck_features `。
-
-5. 安装必要的 Python 依赖包
+4. 安装必要的 Python 依赖包
 
 
 	对于 __Mac/OSX__：
@@ -39,9 +31,3 @@ cd MLND_CN_P4_Dog_Project/
 	set KERAS_BACKEND=tensorflow
 	python -c "from keras import backend"
 	```
-6. 打开 notebook
-
- ```
-jupyter notebook dog_app.ipynb
-```
-
