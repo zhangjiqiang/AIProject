@@ -1,7 +1,5 @@
 #导入工具包
 import numpy as np
-import argparse
-import imutils
 import cv2
 import operator
 '''
@@ -61,6 +59,19 @@ def perspectiveTransform(image, pts):
     transform_image = cv2.warpPerspective(image, M, (max_width, max_height))
     return transform_image
 
+# 对轮廓进行排序
+# orderMode=1表示从上到下排序，orderMode=2表示按照从左到右排序
+def orderContours(contours, orderMode=1):
+    boundrects = [cv2.boundingRect(c) for c in contours]
+    keyid = -1
+    if orderMode == 1:
+        keyid = 1
+    if orderMode == 2:
+        keyid = 0
+    (contours, boundrects) = zip(*sorted(zip(contours, boundrects), key=lambda x: x[1][keyid], reverse=False))
+    print("boundrects:",boundrects)
+    return (contours, boundrects)
+
 # 正确答案字典，key表示每道选择题的序号，value表示选择地接答案
 correct_answer_dict = {0: 1, 1: 4, 2: 0, 3: 3, 4: 1}
 
@@ -91,23 +102,54 @@ if len(approxRect) == 4:
 
 transformImg = perspectiveTransform(grayImage, approxRect.reshape(4, 2))
 cv_show('transform', transformImg)
-# 二值处理
-threshImage = cv2.threshold(transformImg, 0, 255,
-	cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
+# 二值处理,THRESH_OTSU会自动寻找合适的阈值，适合双峰。
+threshImage = cv2.threshold(transformImg, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
 
 cv_show('threshImage', transformImg)
-print(transformImg.shape)
 
 # 找到每一个选择题的圆圈轮廓
 contours = cv2.findContours(threshImage, cv2.RETR_EXTERNAL,
 	cv2.CHAIN_APPROX_SIMPLE)[1]
 
 choicesCnts = []
+#遍历所有外轮廓，找到选择题对应的轮廓
 for contour in contours:
     (x, y, w, h) = cv2.boundingRect(contour)
     ratio = w / float(h)
-    if ratio > 0.9 and ratio < 1.1 and w >20 and h > 20:
+    #选择题对应的轮廓的过滤条件
+    if ratio >= 0.9 and ratio <= 1.1 and w > 20 and h > 20:
         choicesCnts.append(contour)
 
-print(len(choicesCnts))
+#先按照由上到下顺序排序，每道选择题的y值是差不多的
+questionContours = orderContours(choicesCnts)[0]
+choiceCount = len(questionContours)
 
+correctCount = 0 #统计答对个数
+max_non_zero = -1 #当前选项最大非0个数
+correct_choice = -1 #记录当前选择题选择了哪个选项
+#每道选择题有5个选项，所以设置step=5
+for i in range(0, choiceCount, 5):
+    questionIndex = int(i / 5)
+    #得到每个选择题的5个选项,对这5个选项进行排序，按照x坐标由小到大排列，这样就得到了和原图一样的顺序
+    choiceCnts = orderContours(questionContours[i:5 * (questionIndex + 1)], 2)[0]
+    for j, cnt in enumerate(choiceCnts):
+        mask = np.zeros(threshImage.shape, dtype="uint8")
+        # -1表示往轮廓里面填充,在轮廓范围内按照color值填充。这样轮廓内的是255，其余是0.构造出过滤掩码。
+        #通过这个掩码可以过滤掉其它选项，只保留掩码对应的选项
+        cv2.drawContours(mask, [cnt], -1, 255, -1)
+        mask = cv2.bitwise_and(threshImage, threshImage, mask=mask)
+        #统计每个选项非0个数，因为如果被选中的话，这个选项的轮廓区域内非0个数会很多。反之没被选中的轮廓区域非0个数很少
+        #我们就根据统计非0个数来判断哪个选项被选中，非0个数最多的那个就是被选中的
+        nonZeroCount = cv2.countNonZero(mask)
+        if correct_choice == -1 or nonZeroCount > max_non_zero:
+            correct_choice = j
+            max_non_zero = nonZeroCount
+
+    if correct_answer_dict[questionIndex] == correct_choice:
+        correctCount += 1
+    print("current choice:", correct_choice)
+    max_non_zero = -1
+    correct_choice = -1
+
+score = (correctCount / 5.0) * 100
+print("score:", score)
