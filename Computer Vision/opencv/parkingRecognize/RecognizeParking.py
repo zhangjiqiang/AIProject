@@ -9,12 +9,9 @@ import numpy as np
 def show_hist(image):
     h, w = img.shape[:2]
     plt.figure(figsize=[15, 8])
-
     plt.subplot(2, 2, 1)
     plt.title('origin image')
     plt.hist(img.ravel(), 256, [0, 256])
-
-    #plt.subplot(2, 2, 2)
 
     # 这一区域是图片最下面的区域，不在停车场里，这块区域几乎都是马路，即是背景部分。大多数值都低于120.
     plt.subplot(2, 2, 2)
@@ -30,10 +27,10 @@ def show_hist(image):
     plt.subplot(2, 2, 4)
     plt.hist(img[:, int(0.9*w):].ravel(), 256, [0, 256])
     plt.title('left top image')
-
+    
     plt.tight_layout(pad=0, h_pad=0, w_pad=0)
     plt.show()
-
+ 
 
 
 def cv_show(name, img):
@@ -56,10 +53,9 @@ def filter_background(image):
 
 
 img = cv2.imread('./images/parking.jpg')
-print(img.shape)
 show_hist(img)
-
 filter_background(img)
+print(img.shape)
 
 
 
