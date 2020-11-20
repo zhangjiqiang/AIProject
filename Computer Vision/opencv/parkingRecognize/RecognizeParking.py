@@ -2,6 +2,11 @@ import matplotlib.pyplot as plt
 import cv2
 import os, glob
 import numpy as np
+import pickle
+from keras.models import load_model
+from ParkingImgProcess import ParkingImageProcess
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"]='2' # 只显示 warning 和 Error
 
 # 用直方图分析下背景像素值大概是多少，好过滤掉背景。我们根据实际图像分析下背景区域
 # 通过分析停车长外部背景像素分布，可以看到绝大多数值是在120以下，这些都是背景元素，和停车站的车位没有关系
@@ -27,10 +32,10 @@ def show_hist(image):
     plt.subplot(2, 2, 4)
     plt.hist(img[:, int(0.9*w):].ravel(), 256, [0, 256])
     plt.title('left top image')
-    
+
     plt.tight_layout(pad=0, h_pad=0, w_pad=0)
     plt.show()
- 
+
 
 
 def cv_show(name, img):
@@ -38,25 +43,38 @@ def cv_show(name, img):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def filter_background(image):
-    # 过滤掉背景,我们可以通过直方图统计，可以分析得出背景大多是颜色在120以下的。我们可以过滤掉这些像素。
-    # 只保留停车场车位有关的信息，这样能提高我们查找车位的效率和准确度
-    lower = np.uint8([120, 120, 120])
-    upper = np.uint8([255, 255, 255])
-    # 各通道低于(120, 120, 120)的部分分别变成0，(120, 120, 120)～(255, 255, 255)之间的值变成255,相当于过滤背景
-    white_mask = cv2.inRange(image, lower, upper)
-    cv2.imshow('white_mask', white_mask)
 
-    masked = cv2.bitwise_and(image, image, mask=white_mask)
-    cv_show('masked', masked)
-    return masked
+def draw_lines(lines_list, image):
+    copy_img = image.copy()
+    print("line length:", len(lines_list))
+    print("line_lsit type:", type(lines_list))
+    strights = []
+    for line in lines_list:
+        for x1,y1,x2,y2 in line:
+            if abs(y2-y1)<=1 and (x2-x1)<=55:
+                strights.append(line)
+                cv2.line(copy_img, (x1,y1), (x2,y2), [0,0,255], 2)
+
+    print("stright num:", len(strights))
+    cv_show("lines", copy_img)
+
+def keras_model_load(weight_path):
+    model = load_model(weight_path)
+    return model
 
 
 img = cv2.imread('./images/parking.jpg')
-show_hist(img)
-filter_background(img)
-print(img.shape)
-
-
-
+#show_hist(img)
+parkImgProcess = ParkingImageProcess()
+filter_img = parkImgProcess.filter_background(img)
+gray_img = parkImgProcess.gray_process(filter_img)
+edge_img = parkImgProcess.canny_process(gray_img)
+parkImgProcess.cv_show('edge', edge_img)
+select_img = parkImgProcess.select_region(edge_img)
+lines_list = parkImgProcess.hough_lines(select_img)
+draw_lines(lines_list, img)
+rects = parkImgProcess.select_park_Rect(lines_list, img)
+parking_space_dict = parkImgProcess.find_park_space(img, rects)
+model = keras_model_load("./park_model.h5")
+parkImgProcess.parking_predict(img, model, parking_space_dict)
 
